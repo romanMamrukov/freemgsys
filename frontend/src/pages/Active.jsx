@@ -9,6 +9,7 @@ export default function ActivePage() {
   
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [timers, setTimers] = useState({}); // taskId -> elapsed seconds
+  const [manualTimes, setManualTimes] = useState({}); // taskId -> manually overriding minutes
   
   const navigate = useNavigate();
   const intervalRef = useRef(null);
@@ -109,10 +110,15 @@ export default function ActivePage() {
         setActiveTaskId(null);
       }
       
-      const seconds = timers[id] || 0;
-      const minutes = seconds / 60;
-      const roundedMinutes = Math.ceil(minutes / 15) * 15;
-      const finalTime = roundedMinutes === 0 ? 15 : roundedMinutes; // minimum 15 mins
+      let finalTime;
+      if (manualTimes[id] && !isNaN(parseFloat(manualTimes[id]))) {
+        finalTime = parseFloat(manualTimes[id]);
+      } else {
+        const seconds = timers[id] || 0;
+        const minutes = seconds / 60;
+        const roundedMinutes = Math.ceil(minutes / 15) * 15;
+        finalTime = roundedMinutes === 0 ? 15 : roundedMinutes; // minimum 15 mins
+      }
       
       await api.put(`/tasks/${id}/time`, { actual_time: finalTime });
       await api.put(`/tasks/${id}/status`, { status: 'COMPLETED' });
@@ -149,6 +155,20 @@ export default function ActivePage() {
     }
   };
 
+  const deleteAllActiveTasks = async () => {
+    if (!window.confirm("Are you sure you want to delete all active/running tasks?")) return;
+    try {
+      await Promise.all(tasks.map(t => api.delete(`/tasks/${t.id}`)));
+      localStorage.removeItem('activeTaskId');
+      localStorage.removeItem('activeTaskStartTime');
+      setActiveTaskId(null);
+      setTasks([]);
+      navigate('/inbox');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const formatTime = (totalSeconds) => {
     const s = Math.max(0, totalSeconds || 0);
     const h = Math.floor(s / 3600);
@@ -174,9 +194,16 @@ export default function ActivePage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-h1">Active Tasks Queue</h2>
-        <p className="text-muted">Multi-task mode. Track your time down to the second across multiple assignments.</p>
+      <div className="mb-4 flex justify-between items-center">
+        <div>
+          <h2 className="text-h1">Active Tasks Queue</h2>
+          <p className="text-muted">Multi-task mode. Track your time down to the second across multiple assignments.</p>
+        </div>
+        {tasks.length > 0 && (
+          <button className="btn btn-danger" onClick={deleteAllActiveTasks} title="Delete All Active Tasks">
+            <Trash2 size={16} /> Delete All
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -202,7 +229,7 @@ export default function ActivePage() {
                 {formatTime(timers[task.id])}
               </div>
               
-              <div className="flex gap-4 justify-center mt-4">
+              <div className="flex gap-4 justify-center mt-4 items-center">
                 <button className="btn btn-danger" style={{ padding: '12px 16px', fontSize: '14px' }} onClick={() => deleteTask(task.id)} title="Delete Task">
                   <Trash2 size={18} />
                 </button>
@@ -210,9 +237,18 @@ export default function ActivePage() {
                   {isRunning ? <><PauseCircle size={18} /> Pause</> : <><PlayCircle size={18} /> Start</>}
                 </button>
                 
-                <button className="btn btn-success" style={{ padding: '12px 24px', fontSize: '14px' }} onClick={() => completeTask(task.id)}>
-                  <CheckCircle size={18} /> Complete
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 8px', background: 'var(--glass-bg)' }}>
+                  <input 
+                    type="number" 
+                    placeholder="Mins..." 
+                    value={manualTimes[task.id] || ''} 
+                    onChange={e => setManualTimes({ ...manualTimes, [task.id]: e.target.value })}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text)', width: '60px', outline: 'none' }}
+                  />
+                  <button className="btn btn-success" style={{ padding: '8px 16px', fontSize: '14px' }} onClick={() => completeTask(task.id)}>
+                    <CheckCircle size={18} /> Complete
+                  </button>
+                </div>
               </div>
             </div>
           );

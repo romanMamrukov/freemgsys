@@ -21,27 +21,57 @@ function generateInvoicePDF(invoiceId, tasks, totalHours, totalAmount, settings)
         const stream = fs.createWriteStream(filepath);
         doc.pipe(stream);
         
+        doc.registerFont('CF-Regular', 'C:\\Windows\\Fonts\\arial.ttf');
+        doc.registerFont('CF-Bold', 'C:\\Windows\\Fonts\\arialbd.ttf');
+
         // Header
-        doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', { align: 'right' });
-        doc.moveDown();
+        doc.fontSize(24).font('CF-Bold').text('INVOICE', { align: 'right' });
+        doc.moveDown(2);
         
-        const { invoiceFromName, invoiceToName, hourlyRate } = settings;
+        const { 
+            invoiceFromName, myBusinessAddress, myContactDetails, myRegNumber, myPaymentInfo,
+            invoiceToName, clientBusinessAddress, clientContactDetails, clientRegNumber,
+            hourlyRate 
+        } = settings;
         const currentRate = parseFloat(hourlyRate || HOURLY_RATE_EUR);
         
-        // Invoicing Details
-        doc.fontSize(12).font('Helvetica-Bold').text('FROM:', 50, 100);
-        doc.font('Helvetica').text(invoiceFromName || '[YOUR NAME / COMPANY PLACEHOLDER]', 50, 115);
-        
-        doc.font('Helvetica-Bold').text('TO:', 50, 150);
-        doc.font('Helvetica').text(invoiceToName || '[CLIENT NAME PLACEHOLDER]', 50, 165);
-        
-        doc.font('Helvetica-Bold').text(`Invoice Number:`, 400, 100);
-        doc.font('Helvetica').text(`#${invoiceId.toString().padStart(4, '0')}`, 400, 115);
-        
-        doc.font('Helvetica-Bold').text(`Date:`, 400, 150);
-        doc.font('Helvetica').text(new Date().toISOString().split('T')[0], 400, 165);
+        let headerY = doc.y;
 
-        doc.moveDown(4);
+        // Invoicing Details FROM
+        doc.fontSize(12).font('CF-Bold').text('FROM:', 50, headerY);
+        
+        let fromLines = [];
+        if (invoiceFromName) fromLines.push(invoiceFromName);
+        if (myRegNumber) fromLines.push(`Reg No: ${myRegNumber}`);
+        if (myBusinessAddress) fromLines.push(myBusinessAddress);
+        if (myContactDetails) fromLines.push(myContactDetails);
+        if (fromLines.length === 0) fromLines.push('[YOUR INFO PLACEHOLDER]');
+        
+        doc.font('CF-Regular').text(fromLines.join('\n'), 50, headerY + 15);
+        let afterFromY = doc.y;
+
+        // Invoicing ID/Date
+        doc.font('CF-Bold').text(`Invoice Number:`, 400, headerY);
+        doc.font('CF-Regular').text(`#${invoiceId.toString().padStart(4, '0')}`, 400, headerY + 15);
+        doc.font('CF-Bold').text(`Date:`, 400, headerY + 45);
+        doc.font('CF-Regular').text(new Date().toISOString().split('T')[0], 400, headerY + 60);
+
+        let currentY = Math.max(afterFromY + 15, headerY + 90);
+
+        // Invoicing Details TO
+        doc.font('CF-Bold').text('TO:', 50, currentY);
+        
+        let toLines = [];
+        if (invoiceToName) toLines.push(invoiceToName);
+        if (clientRegNumber) toLines.push(`Reg No: ${clientRegNumber}`);
+        if (clientBusinessAddress) toLines.push(clientBusinessAddress);
+        if (clientContactDetails) toLines.push(clientContactDetails);
+        if (toLines.length === 0) toLines.push('[CLIENT INFO PLACEHOLDER]');
+        
+        doc.font('CF-Regular').text(toLines.join('\n'), 50, currentY + 15);
+        
+        doc.x = 50;
+        doc.moveDown(3);
         
         // Prepare table data
         const tableData = {
@@ -62,14 +92,6 @@ function generateInvoicePDF(invoiceId, tasks, totalHours, totalAmount, settings)
                 if (t.comment) {
                     desc += `\nComment: ${t.comment}`;
                 }
-                
-                let dates = [];
-                if (t.created_at) dates.push(`Cr: ${t.created_at.split(' ')[0]}`);
-                if (t.started_at) dates.push(`St: ${t.started_at.split(' ')[0]}`);
-                if (t.completed_at) dates.push(`Cm: ${t.completed_at.split(' ')[0]}`);
-                if (dates.length > 0) {
-                    desc += `\n${dates.join(' | ')}`;
-                }
 
                 return {
                     date: completeDate,
@@ -82,19 +104,29 @@ function generateInvoicePDF(invoiceId, tasks, totalHours, totalAmount, settings)
         };
 
         await doc.table(tableData, { 
-            prepareHeader: () => doc.font("Helvetica-Bold").fontSize(10),
-            prepareRow: () => doc.font("Helvetica").fontSize(10),
+            prepareHeader: () => doc.font("CF-Bold").fontSize(10).fillColor('black').fillOpacity(1),
+            prepareRow: () => doc.font("CF-Regular").fontSize(10).fillColor('black').fillOpacity(1),
+            divider: {
+                header: { disabled: false, width: 1, opacity: 1 },
+                horizontal: { disabled: false, width: 0.5, opacity: 0.5 }
+            },
             padding: 5,
             x: 50 // explicitly force it to the left margin
         });
         
         doc.moveDown(2);
-        doc.fontSize(12).font('Helvetica-Bold');
+        doc.fontSize(12).font('CF-Bold');
         doc.text(`Total Hours: ${totalHours.toFixed(2)}`, { align: 'right' });
         doc.text(`Rate: ${currentRate.toFixed(2)} EUR / Hour`, { align: 'right' });
         
         doc.moveDown(0.5);
         doc.fontSize(16).text(`Total Amount Due: ${totalAmount.toFixed(2)} EUR`, { align: 'right' });
+        
+        if (myPaymentInfo) {
+            doc.moveDown(2);
+            doc.fontSize(10).font('CF-Bold').text('Payment Information:', { align: 'left' });
+            doc.font('CF-Regular').text(myPaymentInfo, { align: 'left' });
+        }
         
         doc.end();
         

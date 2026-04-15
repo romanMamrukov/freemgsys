@@ -55,7 +55,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
             // Insert defaults if not exists
             const defaultSettings = [
                 { key: 'invoiceFromName', value: 'My Company Name' },
+                { key: 'myBusinessAddress', value: '' },
+                { key: 'myContactDetails', value: '' },
+                { key: 'myRegNumber', value: '' },
+                { key: 'myPaymentInfo', value: '' },
                 { key: 'invoiceToName', value: 'Client Company Name' },
+                { key: 'clientBusinessAddress', value: '' },
+                { key: 'clientContactDetails', value: '' },
+                { key: 'clientRegNumber', value: '' },
                 { key: 'hourlyRate', value: '50.0' },
                 { key: 'gmailEmail', value: '' },
                 { key: 'gmailAppPassword', value: '' },

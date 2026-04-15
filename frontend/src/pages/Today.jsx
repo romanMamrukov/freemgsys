@@ -45,13 +45,30 @@ export default function TodayPage() {
     }
   };
 
+  const deleteAllTasks = async () => {
+    if (!window.confirm("Are you sure you want to delete all planned tasks for today?")) return;
+    try {
+      await Promise.all(tasks.map(t => api.delete(`/tasks/${t.id}`)));
+      setTasks([]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-h1">Today's Plan</h2>
-        <p className="text-muted">
-          Total estimated time: {(totalPlannedMinutes / 60).toFixed(1)} hours (Cap is 6-8h)
-        </p>
+      <div className="mb-4 flex justify-between items-center">
+        <div>
+          <h2 className="text-h1">Today's Plan</h2>
+          <p className="text-muted">
+            Total estimated time: {(totalPlannedMinutes / 60).toFixed(1)} hours (Cap is 6-8h)
+          </p>
+        </div>
+        {tasks.length > 0 && (
+          <button className="btn btn-danger" onClick={deleteAllTasks} title="Delete All Planned Tasks">
+            <Trash2 size={16} /> Delete All
+          </button>
+        )}
       </div>
 
       {loading ? (

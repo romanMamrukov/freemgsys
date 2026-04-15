@@ -5,7 +5,14 @@ import { Save } from 'lucide-react';
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
     invoiceFromName: '',
+    myBusinessAddress: '',
+    myContactDetails: '',
+    myRegNumber: '',
+    myPaymentInfo: '',
     invoiceToName: '',
+    clientBusinessAddress: '',
+    clientContactDetails: '',
+    clientRegNumber: '',
     hourlyRate: '',
     gmailEmail: '',
     gmailAppPassword: '',
@@ -79,10 +86,10 @@ export default function SettingsPage() {
         
         {/* Invoicing Section */}
         <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>Invoicing Details</h3>
+          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>My Business Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Your / Company Name (From)</label>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Your / Company Name</label>
               <input 
                 type="text" 
                 name="invoiceFromName" 
@@ -92,7 +99,50 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Name (To)</label>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Registration Number</label>
+              <input 
+                type="text" 
+                name="myRegNumber" 
+                value={settings.myRegNumber || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
+              />
+            </div>
+            <div>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Business Address</label>
+              <textarea 
+                name="myBusinessAddress" 
+                value={settings.myBusinessAddress || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
+              />
+            </div>
+            <div>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Contact Details (Email/Phone)</label>
+              <textarea 
+                name="myContactDetails" 
+                value={settings.myContactDetails || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Payment Information (Bank, IBAN, Swift)</label>
+              <textarea 
+                name="myPaymentInfo" 
+                value={settings.myPaymentInfo || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>Client Details & Rate</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Name</label>
               <input 
                 type="text" 
                 name="invoiceToName" 
@@ -102,6 +152,34 @@ export default function SettingsPage() {
               />
             </div>
             <div>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Registration Number</label>
+              <input 
+                type="text" 
+                name="clientRegNumber" 
+                value={settings.clientRegNumber || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
+              />
+            </div>
+            <div>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Business Address</label>
+              <textarea 
+                name="clientBusinessAddress" 
+                value={settings.clientBusinessAddress || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
+              />
+            </div>
+            <div>
+              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Contact Details</label>
+              <textarea 
+                name="clientContactDetails" 
+                value={settings.clientContactDetails || ''} 
+                onChange={handleChange} 
+                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
               <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Hourly Rate (EUR)</label>
               <input 
                 type="number" 
