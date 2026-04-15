@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { FileText } from 'lucide-react';
+import { FileText, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CompletedPage() {
@@ -13,7 +13,7 @@ export default function CompletedPage() {
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/tasks?status=COMPLETED');
+      const { data } = await api.get('/tasks?status=COMPLETED,INVOICED');
       setTasks(data);
     } catch (e) {
       console.error(e);
@@ -46,6 +46,23 @@ export default function CompletedPage() {
       console.error(e);
     } finally {
       setGenerating(false);
+    }
+  };
+  
+  const deleteTask = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this completed task?")) return;
+    try {
+      await api.delete(`/tasks/${id}`);
+      setTasks(tasks.filter(t => t.id !== id));
+      
+      const newSelected = new Set(selectedTasks);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+        setSelectedTasks(newSelected);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -97,14 +114,34 @@ export default function CompletedPage() {
                   checked={selectedTasks.has(task.id)} 
                   readOnly 
                 />
-                <div>
+                <div style={{ flex: 1 }}>
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="badge badge-completed">COMPLETED</span>
+                    <span className={`badge ${task.status === 'INVOICED' ? 'badge-inbox' : 'badge-completed'}`}>{task.status}</span>
                     <strong>{task.title}</strong>
                   </div>
                   <p className="text-muted text-small">Logged: {(task.actual_time / 60).toFixed(2)} hrs</p>
+                  
+                  <div style={{ marginTop: '12px', marginBottom: '12px' }}>
+                    <textarea 
+                      className="input" 
+                      placeholder="Task comment or work log (displays on invoice)..."
+                      defaultValue={task.comment || ''}
+                      onBlur={(e) => api.put(`/tasks/${task.id}`, { comment: e.target.value }).catch(console.error)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ width: '100%', minHeight: '60px', padding: '10px', borderRadius: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                  
+                  <div className="flex gap-4 text-small text-muted" style={{ fontSize: '0.8rem' }}>
+                    {task.created_at && <span>Cr: {task.created_at.split(' ')[0]}</span>}
+                    {task.started_at && <span>St: {task.started_at.split(' ')[0]}</span>}
+                    {task.completed_at && <span>Cm: {task.completed_at.split(' ')[0]}</span>}
+                  </div>
                 </div>
               </div>
+              <button className="btn btn-danger" style={{ padding: '8px' }} onClick={(e) => deleteTask(e, task.id)} title="Delete Task">
+                <Trash2 size={16} />
+              </button>
             </div>
           ))}
         </div>

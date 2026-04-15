@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
-import { RefreshCw, ArrowRight } from 'lucide-react';
+import { RefreshCw, ArrowRight, Trash2, Upload } from 'lucide-react';
 
 export default function InboxPage() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualDesc, setManualDesc] = useState('');
+  
+  const fileInputRef = useRef(null);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -22,6 +26,18 @@ export default function InboxPage() {
     fetchTasks();
   }, []);
 
+  const handleCreateManual = async () => {
+    if (!manualTitle.trim()) return;
+    try {
+      await api.post('/tasks', { title: manualTitle, description: manualDesc, source: 'MANUAL' });
+      setManualTitle('');
+      setManualDesc('');
+      await fetchTasks();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const [syncing, setSyncing] = useState(null);
 
   const handleSync = async (source) => {
@@ -35,10 +51,37 @@ export default function InboxPage() {
       setSyncing(null);
     }
   };
+  
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    setSyncing('xml');
+    try {
+      const text = await file.text();
+      await api.post('/integrations/jira-xml', { xmlData: text });
+      await fetchTasks();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSyncing(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const planTask = async (id) => {
     try {
       await api.put(`/tasks/${id}/status`, { status: 'PLANNED' });
+      setTasks(tasks.filter(t => t.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  
+  const deleteTask = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    try {
+      await api.delete(`/tasks/${id}`);
       setTasks(tasks.filter(t => t.id !== id));
     } catch (e) {
       console.error(e);
@@ -53,6 +96,17 @@ export default function InboxPage() {
           <p className="text-muted">Review and plan incoming tasks from Jira and Gmail.</p>
         </div>
         <div className="flex gap-2">
+          <input 
+            type="file" 
+            accept=".xml" 
+            style={{ display: 'none' }} 
+            ref={fileInputRef} 
+            onChange={handleFileUpload}
+          />
+          <button className="btn btn-secondary" onClick={() => fileInputRef.current && fileInputRef.current.click()} disabled={syncing === 'xml'}>
+            {syncing === 'xml' ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <Upload size={16} />} 
+            Import XML
+          </button>
           <button className="btn btn-secondary" onClick={() => handleSync('gmail')} disabled={syncing === 'gmail'}>
             {syncing === 'gmail' ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <RefreshCw size={16} />} 
             Sync Gmail
@@ -60,6 +114,31 @@ export default function InboxPage() {
           <button className="btn btn-secondary" onClick={() => handleSync('jira')} disabled={syncing === 'jira'}>
             {syncing === 'jira' ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <RefreshCw size={16} />} 
             Sync Jira
+          </button>
+        </div>
+      </div>
+
+      <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px' }}>
+        <h3 className="text-h2 mb-4" style={{ fontSize: '1.2rem' }}>Add Manual Task</h3>
+        <div className="flex gap-4">
+          <input 
+            type="text" 
+            className="input" 
+            placeholder="Task Title" 
+            value={manualTitle}
+            onChange={(e) => setManualTitle(e.target.value)}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--glass-bg)', color: 'var(--text)' }}
+          />
+          <input 
+            type="text" 
+            className="input" 
+            placeholder="Description (optional)" 
+            value={manualDesc}
+            onChange={(e) => setManualDesc(e.target.value)}
+            style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--glass-bg)', color: 'var(--text)' }}
+          />
+          <button className="btn btn-primary" onClick={handleCreateManual}>
+            Add Task
           </button>
         </div>
       </div>
@@ -81,7 +160,10 @@ export default function InboxPage() {
                 </div>
                 <p className="text-muted text-small">{task.description || "No description provided."}</p>
               </div>
-              <div className="task-actions">
+              <div className="task-actions" style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-danger" style={{ padding: '8px' }} onClick={() => deleteTask(task.id)} title="Delete Task">
+                  <Trash2 size={16} />
+                </button>
                 <button className="btn btn-primary" onClick={() => planTask(task.id)}>
                   Plan Task <ArrowRight size={16} />
                 </button>

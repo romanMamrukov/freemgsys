@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { PlayCircle } from 'lucide-react';
+import { PlayCircle, Trash2 } from 'lucide-react';
 
 export default function TodayPage() {
   const [tasks, setTasks] = useState([]);
@@ -34,6 +34,16 @@ export default function TodayPage() {
       console.error(e);
     }
   };
+  
+  const deleteTask = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this planned task?")) return;
+    try {
+      await api.delete(`/tasks/${id}`);
+      setTasks(tasks.filter(t => t.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div>
@@ -61,7 +71,10 @@ export default function TodayPage() {
                 </div>
                 <p className="text-muted text-small">Estimated: {task.estimated_time} mins</p>
               </div>
-              <div className="task-actions">
+              <div className="task-actions" style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-danger" style={{ padding: '8px' }} onClick={() => deleteTask(task.id)} title="Delete Task">
+                  <Trash2 size={16} />
+                </button>
                 <button className="btn btn-primary" onClick={() => startTask(task.id)}>
                   <PlayCircle size={16} /> Start
                 </button>

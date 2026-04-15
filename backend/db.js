@@ -18,9 +18,16 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 status TEXT DEFAULT 'INBOX',
                 estimated_time REAL DEFAULT 60.0,
                 actual_time REAL DEFAULT 0.0,
+                started_at DATETIME,
+                completed_at DATETIME,
+                comment TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`);
+            
+            db.run(`ALTER TABLE tasks ADD COLUMN started_at DATETIME`, (err) => {});
+            db.run(`ALTER TABLE tasks ADD COLUMN completed_at DATETIME`, (err) => {});
+            db.run(`ALTER TABLE tasks ADD COLUMN comment TEXT`, (err) => {});
             
             db.run(`CREATE TABLE IF NOT EXISTS time_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
