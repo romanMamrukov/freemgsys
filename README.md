@@ -1,42 +1,93 @@
 # Freelance IT Ops Console
 
-A streamlined, full-stack workflow management tool designed for freelancers to parse tasks from Gmail and Jira seamlessly into a central inbox. It supports active task time-tracking, mock API syncing for offline debugging, and automated pipeline processes for generating PDF invoices.
+Offline-first workflow prototype for turning incoming freelance work into tracked tasks, recorded time, and invoice-ready records.
 
-Designed entirely offline-first, your API keys and configuration preferences remain stored locally in your SQLite Database.
+The project explores one continuous operational flow:
 
-## Features Let Down
-* **Inbox Funneling**: Review tasks imported directly from Gmail requests or Jira stories.
-* **Unified Kanban-style Flow**: Inbox -> Today -> Active -> Completed -> Invoiced.
-* **Active Progress Tracker**: Click 'Play' on a Today task to track exact hours automatically. 
-* **Dynamic PDF Invoices**: Bulk-select completed tasks to generate a customized PDF Invoice billed exactly to your client. 
-* **Secure Local Config**: Manage keys, rates, and aliases right from the dashboard GUI, bypassing hardcoded vulnerability risks.
+```text
+Inbox → Today → Active → Completed → Invoiced
+```
 
-## Project Structure
-* `backend/` - The ExpressJS + NodeJS server operating on port 3001. Handles all logic, the SQLite database (`app.db`), mock API injections, and dynamic PDF production.
-* `frontend/` - The React + Vite client interface utilizing custom CSS, Lucide icons, and modern responsive routing.
+## Problem
 
-## Setup Instructions
+Freelance technical work often arrives through several channels while time tracking, task state, and invoicing live in separate tools. The result is missed follow-up, unbilled time, and manual reconciliation at the end of the month.
 
-### 1. Boot up the Backend
+Freelance IT Ops Console tests a local, single-operator workspace that keeps those transitions visible.
+
+## Current capability
+
+- inbox for imported or manually created work;
+- Today, Active, Completed, and Invoiced stages;
+- active time tracking;
+- local settings for rates and invoice identity;
+- PDF invoice generation;
+- mock Gmail and Jira synchronisation flows;
+- SQLite persistence;
+- React and Vite frontend;
+- Express backend.
+
+## Status and security boundary
+
+**Status:** local prototype.
+
+Gmail and Jira synchronisation is simulated. The application is not a production OAuth integration and should not be given real provider credentials.
+
+SQLite keeps records on the local machine, but local storage alone does not make secrets or client data secure. The current prototype has no user authentication, encryption-at-rest policy, multi-user isolation, audit log, backup workflow, or hardened deployment configuration.
+
+## Architecture
+
+```text
+frontend/   React + Vite interface
+backend/    Express API, SQLite data, workflow routes, PDF generation
+```
+
+The frontend expects the backend on port `3001`. The Vite development server normally runs on port `5173`.
+
+## Run locally
+
+### Backend
+
 ```bash
 cd backend
 npm install
 node server.js
-# The server will run on http://localhost:3001
-# The local SQLite DB app.db is initialized immediately.
 ```
-> **Note**: PDF invoices produced are routed directly to `/invoices_output/` in the root folder structure.
 
-### 2. Boot up the Frontend 
-Open a new secondary terminal window:
+### Frontend
+
+In a second terminal:
+
 ```bash
 cd frontend
 npm install
 npm run dev
-# The dev server usually initiates on http://localhost:5173
 ```
 
-## How to Work With the App
-1. Go to the **Settings** menu via the frontend sidebar. Customize your `Hour Rate` and the `From / To` company alias parameters. 
-2. Test the API logic offline by toggling the **Sync Gmail** and **Sync Jira** buttons in the `Inbox`. This will trigger realistic mock tasks.
-3. Plan the tasks to track them actively. Once checked off as `Completed`, hit **Generate Invoice** to see a dynamic PDF produced to root using your exact settings!
+## Validation flow
+
+1. configure a test hourly rate and invoice identity;
+2. add or simulate an inbox item;
+3. move it through Today and Active;
+4. record time and mark it complete;
+5. generate a test invoice;
+6. verify amounts, file location, state transitions, and recovery after restart.
+
+Use demonstration data only.
+
+## Production roadmap
+
+1. define the single highest-value user segment and validate weekly use;
+2. replace mock integrations with provider OAuth and least-privilege scopes;
+3. separate secrets from ordinary settings and encrypt sensitive values;
+4. add authentication, ownership rules, audit events, and backup/restore;
+5. validate invoice numbering and legal fields for the target jurisdiction;
+6. add automated tests and CI for both application layers;
+7. package local deployment or move to a documented managed architecture.
+
+## Security
+
+Do not commit databases, generated invoices, API keys, or client records. See [`SECURITY.md`](./SECURITY.md) for safe reporting guidance.
+
+## Licence
+
+No open-source licence is currently declared. The source is public for evaluation only.
