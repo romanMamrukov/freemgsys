@@ -29,13 +29,22 @@ export function AppProvider({ children }) {
   const [storageError, setStorageError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+    const report = (message) => queueMicrotask(() => {
+      if (!cancelled) setStorageError(message);
+    });
+
     try {
       saveState(state);
-      setStorageError('');
+      report('');
     } catch (error) {
       console.error(error);
-      setStorageError('Browser storage is full or unavailable. Export a backup before continuing.');
+      report('Browser storage is full or unavailable. Export a backup before continuing.');
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [state]);
 
   const addTask = (input) => {

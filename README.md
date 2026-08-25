@@ -28,7 +28,7 @@ GitHub Pages serves only the compiled frontend. All task, timer, settings, and i
 
 ## Run locally
 
-Requirements: Node.js 22+ and npm.
+Requirements: Node.js 24+ and npm.
 
 ```bash
 cd frontend
@@ -63,7 +63,7 @@ The Vite base path is configured for `https://<username>.github.io/freemgsys/`, 
 
 ## Technology
 
-React 19 · Vite 6 · React Router · jsPDF · Vitest · ESLint · GitHub Actions
+React 19 · Vite 8 · React Router · jsPDF · Vitest · ESLint · GitHub Actions
 
 ## License
 

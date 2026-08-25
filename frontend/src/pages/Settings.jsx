@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { DatabaseBackup, Download, RotateCcw, Save, Upload } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { useApp } from '../context/useApp';
-import { createBackup, parseBackup } from '../lib/storage';
+import { createBackup, defaultSettings, parseBackup } from '../lib/storage';
 
 function downloadBackup(state) {
   const blob = new Blob([createBackup(state)], { type: 'application/json' });
@@ -23,8 +23,6 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const fileInput = useRef(null);
 
-  useEffect(() => setForm(state.settings), [state.settings]);
-
   const change = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const submit = (event) => {
@@ -41,6 +39,7 @@ export default function SettingsPage() {
       const restored = parseBackup(await file.text());
       if (!window.confirm('Replace all current tasks, invoices, and settings with this backup?')) return;
       restoreState(restored);
+      setForm(restored.settings);
       setMessage(`Backup restored: ${restored.tasks.length} tasks and ${restored.invoices.length} invoices.`);
       setError('');
     } catch (importError) {
@@ -118,6 +117,7 @@ export default function SettingsPage() {
           <button className="button danger-button" type="button" onClick={() => {
             if (window.confirm('Delete all local tasks, invoices, and settings? Export a backup first if you may need them.')) {
               resetWorkspace();
+              setForm({ ...defaultSettings });
               setMessage('Workspace reset.');
             }
           }}><RotateCcw size={16} /> Reset workspace</button>

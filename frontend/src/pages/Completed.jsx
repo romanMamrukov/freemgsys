@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { FilePlus2, ReceiptText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
@@ -25,10 +25,7 @@ export default function CompletedPage() {
   const selectedTasks = tasks.filter((task) => selected.includes(task.id));
   const totalHours = selectedTasks.reduce((sum, task) => sum + Number(task.actualMinutes || 0) / 60, 0);
   const projectedTotal = totalHours * Number(state.settings.hourlyRate || 0) * (1 + Number(state.settings.taxRate || 0) / 100);
-  const selectedClients = useMemo(
-    () => [...new Set(selectedTasks.map((task) => task.client.trim()).filter(Boolean))],
-    [selectedTasks],
-  );
+  const selectedClients = [...new Set(selectedTasks.map((task) => task.client.trim()).filter(Boolean))];
 
   const toggle = (id, checked) => {
     setSelected((current) => checked ? [...new Set([...current, id])] : current.filter((item) => item !== id));
