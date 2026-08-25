@@ -1,77 +1,68 @@
-import React, { useEffect, useState } from 'react';
-import api from '../api';
-import { DownloadCloud, FileText } from 'lucide-react';
+import { Download, FileText, Trash2 } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import { useApp } from '../context/useApp';
+
+function money(value, currency) {
+  try {
+    return new Intl.NumberFormat('en-IE', { style: 'currency', currency }).format(Number(value) || 0);
+  } catch {
+    return `${Number(value || 0).toFixed(2)} ${currency}`;
+  }
+}
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { state, deleteInvoice } = useApp();
 
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const { data } = await api.get('/invoices');
-        setInvoices(data);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInvoices();
-  }, []);
-
-  const downloadInvoice = (id, filepath) => {
-    // API endpoint returns the file
-    window.open(`http://localhost:3001/api/invoices/${id}/download`, '_blank');
+  const download = async (invoice) => {
+    const { downloadInvoicePdf } = await import('../lib/pdf');
+    await downloadInvoicePdf(invoice);
   };
 
   return (
-    <div>
-      <div className="mb-4">
-        <h2 className="text-h1">Invoices</h2>
-        <p className="text-muted">History of all generated invoices.</p>
-      </div>
+    <>
+      <PageHeader
+        eyebrow="Documents"
+        title="Invoices"
+        description="Invoices are stored as immutable snapshots. Download the PDF again at any time, even after changing your settings."
+      />
 
-      {loading ? (
-        <div className="flex justify-center" style={{ padding: '40px' }}><div className="loader"></div></div>
-      ) : invoices.length === 0 ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <p className="text-muted">No invoices generated yet.</p>
-        </div>
-      ) : (
-        <div className="task-list">
-          {invoices.map(invoice => (
-            <div key={invoice.id} className="glass-panel text-main flex justify-between items-center" style={{ padding: '20px' }}>
-              <div className="flex items-center gap-4">
-                <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '12px', color: 'var(--primary)' }}>
-                  <FileText size={24} />
-                </div>
+      {state.invoices.length ? (
+        <div className="invoice-list">
+          {state.invoices.map((invoice) => (
+            <article className="panel invoice-card" key={invoice.id}>
+              <div className="invoice-card-main">
+                <span className="invoice-icon"><FileText size={20} /></span>
                 <div>
-                  <strong style={{ display: 'block', fontSize: '16px' }}>Invoice #{invoice.id}</strong>
-                  <p className="text-muted text-small flex gap-3 mt-1">
-                    <span>{new Date(invoice.created_at).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <span>{invoice.total_hours.toFixed(2)} hrs</span>
-                  </p>
+                  <span className="eyebrow">{invoice.issueDate}</span>
+                  <h2>{invoice.number}</h2>
+                  <p>{invoice.buyer?.name || 'Client not specified'} · {invoice.lines.length} line{invoice.lines.length === 1 ? '' : 's'} · due {invoice.dueDate}</p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <strong style={{ fontSize: '18px' }}>€{invoice.total_amount_eur.toFixed(2)}</strong>
-                </div>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => downloadInvoice(invoice.id, invoice.pdf_filepath)}
-                  title="Download PDF"
-                >
-                  <DownloadCloud size={18} />
+              <div className="invoice-amount">
+                <span>Total</span>
+                <strong>{money(invoice.total, invoice.currency)}</strong>
+              </div>
+              <div className="invoice-actions">
+                <button className="button secondary" type="button" onClick={() => download(invoice)}>
+                  <Download size={16} /> Download PDF
+                </button>
+                <button className="icon-button danger" type="button" aria-label={`Delete invoice ${invoice.number}`} onClick={() => {
+                  if (window.confirm(`Delete invoice ${invoice.number}? Its tasks will return to Completed.`)) deleteInvoice(invoice.id);
+                }}>
+                  <Trash2 size={16} />
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
+      ) : (
+        <EmptyState
+          icon={FileText}
+          title="No invoices yet"
+          description="Select completed tasks and generate your first professional PDF invoice."
+        />
       )}
-    </div>
+    </>
   );
 }

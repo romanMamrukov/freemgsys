@@ -1,105 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../api';
-import { PlayCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CheckCircle2, Play } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import TaskCard from '../components/TaskCard';
+import { useApp } from '../context/useApp';
+import { TASK_STATUS } from '../lib/storage';
 
 export default function TodayPage() {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  const fetchTasks = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get('/tasks?status=PLANNED');
-      setTasks(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  const totalPlannedMinutes = tasks.reduce((sum, t) => sum + t.estimated_time, 0);
-
-  const startTask = async (id) => {
-    try {
-      await api.put(`/tasks/${id}/status`, { status: 'IN_PROGRESS' });
-      navigate('/active');
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  
-  const deleteTask = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this planned task?")) return;
-    try {
-      await api.delete(`/tasks/${id}`);
-      setTasks(tasks.filter(t => t.id !== id));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const deleteAllTasks = async () => {
-    if (!window.confirm("Are you sure you want to delete all planned tasks for today?")) return;
-    try {
-      await Promise.all(tasks.map(t => api.delete(`/tasks/${t.id}`)));
-      setTasks([]);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const { state, moveTask, startTask, completeTask } = useApp();
+  const tasks = state.tasks.filter((task) => task.status === TASK_STATUS.TODAY);
 
   return (
-    <div>
-      <div className="mb-4 flex justify-between items-center">
-        <div>
-          <h2 className="text-h1">Today's Plan</h2>
-          <p className="text-muted">
-            Total estimated time: {(totalPlannedMinutes / 60).toFixed(1)} hours (Cap is 6-8h)
-          </p>
-        </div>
-        {tasks.length > 0 && (
-          <button className="btn btn-danger" onClick={deleteAllTasks} title="Delete All Planned Tasks">
-            <Trash2 size={16} /> Delete All
-          </button>
-        )}
-      </div>
+    <>
+      <PageHeader
+        eyebrow="Focus"
+        title="Today"
+        description="A short, deliberate queue for the work that matters now. Starting a task automatically pauses any other running task."
+      />
 
-      {loading ? (
-        <div className="flex justify-center" style={{ padding: '40px' }}><div className="loader"></div></div>
-      ) : tasks.length === 0 ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <p className="text-muted">No tasks planned for today. Go to the Inbox to plan some.</p>
+      <section className="section-block">
+        <div className="list-heading">
+          <h2>Planned work</h2>
+          <span>{tasks.length} task{tasks.length === 1 ? '' : 's'}</span>
         </div>
-      ) : (
-        <div className="task-list">
-          {tasks.map(task => (
-            <div key={task.id} className="glass-panel task-card">
-              <div className="task-info">
-                <div className="flex items-center gap-3 mb-1">
-                  <span className="badge badge-planned">PLANNED</span>
-                  <strong>{task.title}</strong>
-                </div>
-                <p className="text-muted text-small">Estimated: {task.estimated_time} mins</p>
-              </div>
-              <div className="task-actions" style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn btn-danger" style={{ padding: '8px' }} onClick={() => deleteTask(task.id)} title="Delete Task">
-                  <Trash2 size={16} />
+        {tasks.length ? (
+          <div className="task-list">
+            {tasks.map((task) => (
+              <TaskCard task={task} key={task.id}>
+                <button className="button small primary" type="button" onClick={() => startTask(task.id)}>
+                  <Play size={15} fill="currentColor" /> Start
                 </button>
-                <button className="btn btn-primary" onClick={() => startTask(task.id)}>
-                  <PlayCircle size={16} /> Start
+                <button
+                  className="button small secondary"
+                  type="button"
+                  onClick={() => completeTask(task.id, { totalMinutes: task.actualMinutes || task.estimatedMinutes })}
+                  title="Uses the tracked time, or the estimate if no time has been tracked"
+                >
+                  <CheckCircle2 size={15} /> Complete
                 </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                <button className="icon-button" type="button" aria-label={`Return ${task.title} to inbox`} onClick={() => moveTask(task.id, TASK_STATUS.INBOX)}>
+                  <ArrowLeft size={16} />
+                </button>
+              </TaskCard>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={CalendarDays}
+            title="Nothing planned for today"
+            description="Move a task here from Inbox when you are ready to focus on it."
+          />
+        )}
+      </section>
+    </>
   );
 }
