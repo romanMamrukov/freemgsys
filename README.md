@@ -44,15 +44,17 @@ npm test
 npm run build
 ```
 
-## Deploy to GitHub Pages
+## Deploy to GitHub Pages for free
 
-The workflow in `.github/workflows/pages.yml` tests and deploys the frontend after every push to `main`.
+The compiled site is stored in the dedicated `gh-pages` branch. It includes a `.nojekyll` file, so GitHub can publish the static files directly without a custom GitHub Actions workflow.
 
 1. Open the repository **Settings → Pages**.
-2. Under **Build and deployment**, select **GitHub Actions** as the source.
-3. Merge the implementation into `main`, or run the workflow manually.
+2. Under **Build and deployment**, choose **Deploy from a branch**.
+3. Select the `gh-pages` branch and `/ (root)`, then save.
 
-The Vite base path is configured for `https://<username>.github.io/freemgsys/`, and hash-based routing keeps every screen reload-safe on GitHub Pages.
+The site will be available at `https://romanmamrukov.github.io/freemgsys/`. The Vite base path and hash-based routing are already configured for this address.
+
+Using tasks, timers, backups, and invoices online never requires Node.js or a local machine. Node.js is needed only when a developer changes the application source and produces a new release build.
 
 ## Data and privacy
 
@@ -63,7 +65,7 @@ The Vite base path is configured for `https://<username>.github.io/freemgsys/`, 
 
 ## Technology
 
-React 19 · Vite 8 · React Router · jsPDF · Vitest · ESLint · GitHub Actions
+React 19 · Vite 8 · React Router · jsPDF · Vitest · ESLint · GitHub Pages
 
 ## License
 
