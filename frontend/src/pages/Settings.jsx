@@ -1,269 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import api from '../api';
-import { Save } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { DatabaseBackup, Download, RotateCcw, Save, Upload } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import { useApp } from '../context/useApp';
+import { createBackup, defaultSettings, parseBackup } from '../lib/storage';
+
+function downloadBackup(state) {
+  const blob = new Blob([createBackup(state)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `freemgsys-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({
-    invoiceFromName: '',
-    myBusinessAddress: '',
-    myContactDetails: '',
-    myRegNumber: '',
-    myPaymentInfo: '',
-    invoiceToName: '',
-    clientBusinessAddress: '',
-    clientContactDetails: '',
-    clientRegNumber: '',
-    hourlyRate: '',
-    gmailEmail: '',
-    gmailAppPassword: '',
-    jiraDomain: '',
-    jiraEmail: '',
-    jiraApiToken: ''
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { state, saveSettings, restoreState, resetWorkspace } = useApp();
+  const [form, setForm] = useState(state.settings);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const fileInput = useRef(null);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  const change = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
 
-  const fetchSettings = async () => {
+  const submit = (event) => {
+    event.preventDefault();
+    saveSettings(form);
+    setMessage('Settings saved in this browser.');
+    setError('');
+  };
+
+  const importBackup = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
     try {
-      const { data } = await api.get('/settings');
-      setSettings(prev => ({ ...prev, ...data }));
-    } catch (e) {
-      console.error('Failed to fetch settings', e);
+      const restored = parseBackup(await file.text());
+      if (!window.confirm('Replace all current tasks, invoices, and settings with this backup?')) return;
+      restoreState(restored);
+      setForm(restored.settings);
+      setMessage(`Backup restored: ${restored.tasks.length} tasks and ${restored.invoices.length} invoices.`);
+      setError('');
+    } catch (importError) {
+      setError(importError.message || 'The backup could not be imported.');
+      setMessage('');
     } finally {
-      setLoading(false);
+      event.target.value = '';
     }
   };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setSettings(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setMessage('');
-    try {
-      await api.post('/settings', settings);
-      setMessage('Settings saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
-    } catch (e) {
-      console.error(e);
-      setMessage('Failed to save settings.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="flex justify-center" style={{ padding: '40px' }}><div className="loader"></div></div>;
-  }
 
   return (
-    <div style={{ paddingBottom: '40px' }}>
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h2 className="text-h1">Settings</h2>
-          <p className="text-muted">Manage your invoicing details and integrations.</p>
-        </div>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <Save size={16} />} 
-          Save Changes
-        </button>
-      </div>
+    <>
+      <PageHeader
+        eyebrow="Workspace"
+        title="Settings & backup"
+        description="Configure invoice details and keep a portable JSON backup. Nothing is sent to a server."
+      />
 
-      {message && (
-        <div style={{ padding: '12px', background: 'var(--bg-card)', borderLeft: '4px solid var(--primary)', marginBottom: '20px' }}>
-          {message}
-        </div>
-      )}
+      <form onSubmit={submit} className="settings-stack">
+        <section className="panel settings-panel">
+          <div className="panel-heading"><div><span className="eyebrow">Seller</span><h2>Your business details</h2></div></div>
+          <div className="form-grid">
+            <label className="field"><span>Name / company *</span><input value={form.sellerName} onChange={change('sellerName')} placeholder="Your name or company" /></label>
+            <label className="field"><span>Registration number</span><input value={form.sellerRegistration} onChange={change('sellerRegistration')} /></label>
+            <label className="field field-wide"><span>Address</span><input value={form.sellerAddress} onChange={change('sellerAddress')} placeholder="Street, city, postal code, country" /></label>
+            <label className="field"><span>Email</span><input type="email" value={form.sellerEmail} onChange={change('sellerEmail')} /></label>
+            <label className="field"><span>Phone</span><input value={form.sellerPhone} onChange={change('sellerPhone')} /></label>
+            <label className="field"><span>Bank</span><input value={form.sellerBank} onChange={change('sellerBank')} /></label>
+            <label className="field"><span>IBAN</span><input value={form.sellerIban} onChange={change('sellerIban')} /></label>
+            <label className="field"><span>SWIFT / BIC</span><input value={form.sellerSwift} onChange={change('sellerSwift')} /></label>
+          </div>
+        </section>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        
-        {/* Invoicing Section */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>My Business Details</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Your / Company Name</label>
-              <input 
-                type="text" 
-                name="invoiceFromName" 
-                value={settings.invoiceFromName || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Registration Number</label>
-              <input 
-                type="text" 
-                name="myRegNumber" 
-                value={settings.myRegNumber || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Business Address</label>
-              <textarea 
-                name="myBusinessAddress" 
-                value={settings.myBusinessAddress || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Contact Details (Email/Phone)</label>
-              <textarea 
-                name="myContactDetails" 
-                value={settings.myContactDetails || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
-              />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Payment Information (Bank, IBAN, Swift)</label>
-              <textarea 
-                name="myPaymentInfo" 
-                value={settings.myPaymentInfo || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
-              />
-            </div>
+        <section className="panel settings-panel">
+          <div className="panel-heading"><div><span className="eyebrow">Default client</span><h2>Buyer details</h2></div></div>
+          <div className="form-grid">
+            <label className="field"><span>Name / company</span><input value={form.clientName} onChange={change('clientName')} placeholder="Used when a task has no client" /></label>
+            <label className="field"><span>Registration number</span><input value={form.clientRegistration} onChange={change('clientRegistration')} /></label>
+            <label className="field field-wide"><span>Address</span><input value={form.clientAddress} onChange={change('clientAddress')} /></label>
+            <label className="field"><span>Email</span><input type="email" value={form.clientEmail} onChange={change('clientEmail')} /></label>
+          </div>
+        </section>
+
+        <section className="panel settings-panel">
+          <div className="panel-heading"><div><span className="eyebrow">Billing</span><h2>Invoice defaults</h2></div></div>
+          <div className="form-grid form-grid-four">
+            <label className="field"><span>Hourly rate</span><input type="number" min="0" step="0.01" value={form.hourlyRate} onChange={change('hourlyRate')} /></label>
+            <label className="field"><span>Currency</span><select value={form.currency} onChange={change('currency')}><option>EUR</option><option>USD</option><option>GBP</option><option>SEK</option><option>NOK</option><option>DKK</option></select></label>
+            <label className="field"><span>Tax rate (%)</span><input type="number" min="0" step="0.01" value={form.taxRate} onChange={change('taxRate')} /></label>
+            <label className="field"><span>Payment terms (days)</span><input type="number" min="0" step="1" value={form.paymentTermsDays} onChange={change('paymentTermsDays')} /></label>
+            <label className="field"><span>Invoice prefix</span><input value={form.invoicePrefix} onChange={change('invoicePrefix')} maxLength="12" /></label>
+            <label className="field"><span>Next number</span><input type="number" min="1" step="1" value={form.nextInvoiceNumber} onChange={change('nextInvoiceNumber')} /></label>
+            <label className="field field-wide"><span>Invoice notes</span><textarea rows="3" value={form.invoiceNotes} onChange={change('invoiceNotes')} placeholder="Thank you, payment reference, or legal note" /></label>
+          </div>
+        </section>
+
+        {message && <p className="success-message" role="status">{message}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="sticky-save"><button className="button primary" type="submit"><Save size={17} /> Save settings</button></div>
+      </form>
+
+      <section className="panel backup-panel">
+        <div className="backup-intro">
+          <span className="empty-icon"><DatabaseBackup size={23} /></span>
+          <div>
+            <span className="eyebrow">Browser-only storage</span>
+            <h2>Backup your workspace</h2>
+            <p>Your {state.tasks.length} tasks, {state.invoices.length} invoices, and all settings live only in this browser profile. Export a backup regularly and before clearing browser data.</p>
           </div>
         </div>
-
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>Client Details & Rate</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Name</label>
-              <input 
-                type="text" 
-                name="invoiceToName" 
-                value={settings.invoiceToName || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Registration Number</label>
-              <input 
-                type="text" 
-                name="clientRegNumber" 
-                value={settings.clientRegNumber || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Business Address</label>
-              <textarea 
-                name="clientBusinessAddress" 
-                value={settings.clientBusinessAddress || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Client Contact Details</label>
-              <textarea 
-                name="clientContactDetails" 
-                value={settings.clientContactDetails || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px', minHeight: '60px' }}
-              />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Hourly Rate (EUR)</label>
-              <input 
-                type="number" 
-                name="hourlyRate" 
-                value={settings.hourlyRate || ''} 
-                onChange={handleChange} 
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-          </div>
+        <div className="backup-actions">
+          <button className="button secondary" type="button" onClick={() => downloadBackup(state)}><Download size={16} /> Export JSON</button>
+          <button className="button secondary" type="button" onClick={() => fileInput.current?.click()}><Upload size={16} /> Import JSON</button>
+          <input ref={fileInput} className="visually-hidden" type="file" accept="application/json,.json" onChange={importBackup} />
+          <button className="button danger-button" type="button" onClick={() => {
+            if (window.confirm('Delete all local tasks, invoices, and settings? Export a backup first if you may need them.')) {
+              resetWorkspace();
+              setForm({ ...defaultSettings });
+              setMessage('Workspace reset.');
+            }
+          }}><RotateCcw size={16} /> Reset workspace</button>
         </div>
-
-        {/* Gmail Section */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>Gmail Integration</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Email Address</label>
-              <input 
-                type="text" 
-                name="gmailEmail" 
-                value={settings.gmailEmail || ''} 
-                onChange={handleChange} 
-                placeholder="you@gmail.com"
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>App Password</label>
-              <input 
-                type="password" 
-                name="gmailAppPassword" 
-                value={settings.gmailAppPassword || ''} 
-                onChange={handleChange} 
-                placeholder="xxxx xxxx xxxx xxxx"
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-          </div>
-          <p className="text-muted text-small mt-2">Generate an App Password in your Google Account security settings.</p>
-        </div>
-
-        {/* Jira Section */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 className="mb-4" style={{ fontSize: '18px', fontWeight: 'bold' }}>Jira Integration</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Jira Workspace Domain</label>
-              <input 
-                type="text" 
-                name="jiraDomain" 
-                value={settings.jiraDomain || ''} 
-                onChange={handleChange} 
-                placeholder="https://your-domain.atlassian.net"
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Jira Email Address</label>
-              <input 
-                type="text" 
-                name="jiraEmail" 
-                value={settings.jiraEmail || ''} 
-                onChange={handleChange} 
-                placeholder="you@company.com"
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-            <div>
-              <label className="text-muted text-small" style={{ display: 'block', marginBottom: '8px' }}>Jira API Token</label>
-              <input 
-                type="password" 
-                name="jiraApiToken" 
-                value={settings.jiraApiToken || ''} 
-                onChange={handleChange} 
-                placeholder="Paste API token here"
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-dark)', color: 'var(--text-light)', border: '1px solid var(--border)', borderRadius: '4px' }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </section>
+    </>
   );
 }

@@ -1,42 +1,72 @@
 # Freelance IT Ops Console
 
-A streamlined, full-stack workflow management tool designed for freelancers to parse tasks from Gmail and Jira seamlessly into a central inbox. It supports active task time-tracking, mock API syncing for offline debugging, and automated pipeline processes for generating PDF invoices.
+A private, browser-first workspace for capturing freelance tasks, tracking time, and generating professional PDF invoices. The application is designed to run as a static site on GitHub Pages: no local server, database, account, or third-party integration is required.
 
-Designed entirely offline-first, your API keys and configuration preferences remain stored locally in your SQLite Database.
+> Data is stored only in the current browser profile. Export a JSON backup regularly and before clearing browser data or changing devices.
 
-## Features Let Down
-* **Inbox Funneling**: Review tasks imported directly from Gmail requests or Jira stories.
-* **Unified Kanban-style Flow**: Inbox -> Today -> Active -> Completed -> Invoiced.
-* **Active Progress Tracker**: Click 'Play' on a Today task to track exact hours automatically. 
-* **Dynamic PDF Invoices**: Bulk-select completed tasks to generate a customized PDF Invoice billed exactly to your client. 
-* **Secure Local Config**: Manage keys, rates, and aliases right from the dashboard GUI, bypassing hardcoded vulnerability risks.
+## What it does
 
-## Project Structure
-* `backend/` - The ExpressJS + NodeJS server operating on port 3001. Handles all logic, the SQLite database (`app.db`), mock API injections, and dynamic PDF production.
-* `frontend/` - The React + Vite client interface utilizing custom CSS, Lucide icons, and modern responsive routing.
+- Captures tasks manually and moves them through Inbox, Today, Active, Completed, and Invoiced states.
+- Runs one persistent task timer that remains accurate after refreshing or closing the tab.
+- Reviews and adjusts billable time before invoicing.
+- Generates downloadable, Unicode-capable PDF invoices entirely in the browser.
+- Stores immutable invoice snapshots for repeat downloads.
+- Exports and imports complete JSON backups.
+- Works responsively on desktop and mobile browsers.
 
-## Setup Instructions
+## Online architecture
 
-### 1. Boot up the Backend
-```bash
-cd backend
-npm install
-node server.js
-# The server will run on http://localhost:3001
-# The local SQLite DB app.db is initialized immediately.
+```mermaid
+flowchart TD
+    A[GitHub Pages] --> B[React application]
+    B --> C[Browser localStorage]
+    B --> D[PDF invoice download]
+    C --> E[JSON backup export]
 ```
-> **Note**: PDF invoices produced are routed directly to `/invoices_output/` in the root folder structure.
 
-### 2. Boot up the Frontend 
-Open a new secondary terminal window:
+GitHub Pages serves only the compiled frontend. All task, timer, settings, and invoice operations happen locally in the browser. The legacy `backend/` directory is retained for reference but is not used by the online edition.
+
+## Run locally
+
+Requirements: Node.js 24+ and npm.
+
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
-# The dev server usually initiates on http://localhost:5173
 ```
 
-## How to Work With the App
-1. Go to the **Settings** menu via the frontend sidebar. Customize your `Hour Rate` and the `From / To` company alias parameters. 
-2. Test the API logic offline by toggling the **Sync Gmail** and **Sync Jira** buttons in the `Inbox`. This will trigger realistic mock tasks.
-3. Plan the tasks to track them actively. Once checked off as `Completed`, hit **Generate Invoice** to see a dynamic PDF produced to root using your exact settings!
+Quality checks:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+## Deploy to GitHub Pages for free
+
+The compiled site is stored in the dedicated `gh-pages` branch. It includes a `.nojekyll` file, so GitHub can publish the static files directly without a custom GitHub Actions workflow.
+
+1. Open the repository **Settings → Pages**.
+2. Under **Build and deployment**, choose **Deploy from a branch**.
+3. Select the `gh-pages` branch and `/ (root)`, then save.
+
+The site will be available at `https://romanmamrukov.github.io/freemgsys/`. The Vite base path and hash-based routing are already configured for this address.
+
+Using tasks, timers, backups, and invoices online never requires Node.js or a local machine. Node.js is needed only when a developer changes the application source and produces a new release build.
+
+## Data and privacy
+
+- No analytics, accounts, cookies, external APIs, or automatic integrations.
+- Clearing site data removes the local workspace.
+- A JSON backup contains business and invoice information in plain text; store it securely.
+- PDFs are generated on-device and downloaded through the browser.
+
+## Technology
+
+React 19 · Vite 8 · React Router · jsPDF · Vitest · ESLint · GitHub Pages
+
+## License
+
+No license has been declared yet. Add one before accepting external contributions or reuse.

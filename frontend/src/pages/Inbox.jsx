@@ -1,177 +1,122 @@
-import React, { useEffect, useState, useRef } from 'react';
-import api from '../api';
-import { RefreshCw, ArrowRight, Trash2, Upload } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Inbox as InboxIcon, Plus, Trash2 } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import TaskCard from '../components/TaskCard';
+import { useApp } from '../context/useApp';
+import { TASK_STATUS } from '../lib/storage';
+
+const initialForm = {
+  title: '',
+  client: '',
+  externalId: '',
+  description: '',
+  estimatedHours: 1,
+};
 
 export default function InboxPage() {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [manualTitle, setManualTitle] = useState('');
-  const [manualDesc, setManualDesc] = useState('');
-  
-  const fileInputRef = useRef(null);
+  const { state, addTask, moveTask, deleteTask } = useApp();
+  const [form, setForm] = useState(initialForm);
+  const [formOpen, setFormOpen] = useState(false);
+  const [error, setError] = useState('');
+  const tasks = state.tasks.filter((task) => task.status === TASK_STATUS.INBOX);
 
-  const fetchTasks = async () => {
-    setLoading(true);
+  const submit = (event) => {
+    event.preventDefault();
     try {
-      const { data } = await api.get('/tasks?status=INBOX');
-      setTasks(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  const handleCreateManual = async () => {
-    if (!manualTitle.trim()) return;
-    try {
-      await api.post('/tasks', { title: manualTitle, description: manualDesc, source: 'MANUAL' });
-      setManualTitle('');
-      setManualDesc('');
-      await fetchTasks();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const [syncing, setSyncing] = useState(null);
-
-  const handleSync = async (source) => {
-    setSyncing(source);
-    try {
-      await api.post(`/integrations/${source}`);
-      await fetchTasks();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSyncing(null);
-    }
-  };
-  
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    setSyncing('xml');
-    try {
-      const text = await file.text();
-      await api.post('/integrations/jira-xml', { xmlData: text });
-      await fetchTasks();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSyncing(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const planTask = async (id) => {
-    try {
-      await api.put(`/tasks/${id}/status`, { status: 'PLANNED' });
-      setTasks(tasks.filter(t => t.id !== id));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  
-  const deleteTask = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
-    try {
-      await api.delete(`/tasks/${id}`);
-      setTasks(tasks.filter(t => t.id !== id));
-    } catch (e) {
-      console.error(e);
+      addTask({
+        ...form,
+        estimatedMinutes: Math.round(Math.max(0, Number(form.estimatedHours) || 0) * 60),
+      });
+      setForm(initialForm);
+      setFormOpen(false);
+      setError('');
+    } catch (submitError) {
+      setError(submitError.message);
     }
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h2 className="text-h1">Inbox</h2>
-          <p className="text-muted">Review and plan incoming tasks from Jira and Gmail.</p>
-        </div>
-        <div className="flex gap-2">
-          <input 
-            type="file" 
-            accept=".xml" 
-            style={{ display: 'none' }} 
-            ref={fileInputRef} 
-            onChange={handleFileUpload}
-          />
-          <button className="btn btn-secondary" onClick={() => fileInputRef.current && fileInputRef.current.click()} disabled={syncing === 'xml'}>
-            {syncing === 'xml' ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <Upload size={16} />} 
-            Import XML
+    <>
+      <PageHeader
+        eyebrow="Capture"
+        title="Inbox"
+        description="Record new work before it disappears into calls, messages, or memory. Integrations are intentionally disabled in this browser-only edition."
+        actions={(
+          <button className="button primary" type="button" onClick={() => setFormOpen((value) => !value)}>
+            <Plus size={17} /> New task
           </button>
-          <button className="btn btn-secondary" onClick={() => handleSync('gmail')} disabled={syncing === 'gmail'}>
-            {syncing === 'gmail' ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <RefreshCw size={16} />} 
-            Sync Gmail
-          </button>
-          <button className="btn btn-secondary" onClick={() => handleSync('jira')} disabled={syncing === 'jira'}>
-            {syncing === 'jira' ? <div className="loader" style={{width: 16, height: 16, borderWidth: 2}}></div> : <RefreshCw size={16} />} 
-            Sync Jira
-          </button>
-        </div>
-      </div>
+        )}
+      />
 
-      <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px' }}>
-        <h3 className="text-h2 mb-4" style={{ fontSize: '1.2rem' }}>Add Manual Task</h3>
-        <div className="flex gap-4">
-          <input 
-            type="text" 
-            className="input" 
-            placeholder="Task Title" 
-            value={manualTitle}
-            onChange={(e) => setManualTitle(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--glass-bg)', color: 'var(--text)' }}
-          />
-          <input 
-            type="text" 
-            className="input" 
-            placeholder="Description (optional)" 
-            value={manualDesc}
-            onChange={(e) => setManualDesc(e.target.value)}
-            style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--glass-bg)', color: 'var(--text)' }}
-          />
-          <button className="btn btn-primary" onClick={handleCreateManual}>
-            Add Task
-          </button>
-        </div>
-      </div>
+      {formOpen && (
+        <form className="panel task-form" onSubmit={submit}>
+          <div className="panel-heading">
+            <div><span className="eyebrow">Manual entry</span><h2>Capture new work</h2></div>
+            <button className="text-button" type="button" onClick={() => setFormOpen(false)}>Close</button>
+          </div>
+          <div className="form-grid">
+            <label className="field field-wide">
+              <span>Task title *</span>
+              <input
+                autoFocus
+                value={form.title}
+                onChange={(event) => setForm({ ...form, title: event.target.value })}
+                placeholder="Prepare release verification report"
+                required
+              />
+            </label>
+            <label className="field">
+              <span>Client</span>
+              <input value={form.client} onChange={(event) => setForm({ ...form, client: event.target.value })} placeholder="Client or company" />
+            </label>
+            <label className="field">
+              <span>Reference</span>
+              <input value={form.externalId} onChange={(event) => setForm({ ...form, externalId: event.target.value })} placeholder="Ticket, PO, or project ID" />
+            </label>
+            <label className="field">
+              <span>Estimated hours</span>
+              <input type="number" min="0" step="0.25" value={form.estimatedHours} onChange={(event) => setForm({ ...form, estimatedHours: event.target.value })} />
+            </label>
+            <label className="field field-wide">
+              <span>Description</span>
+              <textarea rows="3" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Scope, acceptance criteria, or useful context" />
+            </label>
+          </div>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="form-actions">
+            <button className="button primary" type="submit">Add to inbox</button>
+            <button className="button secondary" type="button" onClick={() => setForm(initialForm)}>Clear</button>
+          </div>
+        </form>
+      )}
 
-      {loading ? (
-        <div className="flex justify-center" style={{ padding: '40px' }}><div className="loader"></div></div>
-      ) : tasks.length === 0 ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <p className="text-muted">Inbox is empty. Sync to fetch new tasks.</p>
-        </div>
-      ) : (
-        <div className="task-list">
-          {tasks.map(task => (
-            <div key={task.id} className="glass-panel task-card" style={{ padding: '20px' }}>
-              <div className="task-info">
-                <div className="flex items-center gap-3 mb-1">
-                  <span className="badge badge-inbox">{task.source}</span>
-                  <strong style={{ fontSize: '16px' }}>{task.title}</strong>
-                </div>
-                <p className="text-muted text-small">{task.description || "No description provided."}</p>
-              </div>
-              <div className="task-actions" style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn btn-danger" style={{ padding: '8px' }} onClick={() => deleteTask(task.id)} title="Delete Task">
+      <section className="section-block">
+        <div className="list-heading"><h2>Unplanned work</h2><span>{tasks.length} task{tasks.length === 1 ? '' : 's'}</span></div>
+        {tasks.length ? (
+          <div className="task-list">
+            {tasks.map((task) => (
+              <TaskCard task={task} key={task.id}>
+                <button className="button small primary" type="button" onClick={() => moveTask(task.id, TASK_STATUS.TODAY)}>
+                  Plan today <ArrowRight size={15} />
+                </button>
+                <button className="icon-button danger" type="button" aria-label={`Delete ${task.title}`} onClick={() => {
+                  if (window.confirm(`Delete “${task.title}”?`)) deleteTask(task.id);
+                }}>
                   <Trash2 size={16} />
                 </button>
-                <button className="btn btn-primary" onClick={() => planTask(task.id)}>
-                  Plan Task <ArrowRight size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              </TaskCard>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={InboxIcon}
+            title="Inbox is clear"
+            description="Create a task manually, then move it to Today when you are ready to work on it."
+            action={<button className="button secondary" type="button" onClick={() => setFormOpen(true)}><Plus size={16} /> Add first task</button>}
+          />
+        )}
+      </section>
+    </>
   );
 }
