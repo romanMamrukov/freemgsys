@@ -1,5 +1,7 @@
 name: Validate frontend
 
+# Public-repository validation using GitHub-hosted runners only.
+
 on:
   pull_request:
     branches: [main]
